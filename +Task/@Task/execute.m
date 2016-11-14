@@ -26,7 +26,7 @@ function varargout = execute(obj)
 
                 % Error was thrown deliberately ("successful failure")
                 else
-                    throw(ME);
+                    throwAsCaller(ME);
                 end
             end
         end
