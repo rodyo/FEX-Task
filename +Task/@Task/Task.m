@@ -43,7 +43,8 @@ classdef Task < handle
 
         spacer = char(183);
 
-        completion_msg = { %status       outstream    message
+        completion_msg = ...%status      outstream    message
+        {
             Task.ExitStatus.ERROR        2            'ERR:\n'
             Task.ExitStatus.WARNING      2            'WARN:\n'
             Task.ExitStatus.INCOMPLETE   2            'NOK\n'
@@ -61,7 +62,8 @@ classdef Task < handle
             %}
             Task.ExitStatus.PASS         1            'PASS\n'
             Task.ExitStatus.FAIL         2            'FAIL\n'
-            };
+        };
+
     end
 
 
@@ -144,7 +146,7 @@ classdef Task < handle
         startTask(obj);
 
         % Default handler
-        varargout = defaultHandler(obj);
+        varargout = defaultHandler(obj, variant);
 
         % End tasks: print colored message based on exit status.
         terminateTask(obj, code, ME);

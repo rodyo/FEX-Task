@@ -125,6 +125,7 @@ function demo_task_0B()
 
     warning([mfilename ':some_other_warning'],...
             'This one wil too.');
+        
 end
 
 % Demo task 0/C. Do nothing, with error

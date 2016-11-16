@@ -14,6 +14,9 @@ function terminateTask(obj, code, ME)
     % Toggle flag (NOTE: has to be BEFORE throws/warnings)
     obj.can_terminate = false;
 
+    % Cleanup tasks
+    OC = onCleanup(obj.cleaner);
+
     % Handle text display
     if obj.display
 
@@ -25,7 +28,7 @@ function terminateTask(obj, code, ME)
             % NOTE: (Rody Oldenhuis) switch() in MATLAB2010a with
             % enum classes has a bug
             if code==Task.ExitStatus.ERROR
-                throw(ME);
+                throwAsCaller(ME);
             elseif code==Task.ExitStatus.WARNING
                 warning off backtrace
                 warning(ME.identifier, ME.message);
@@ -34,6 +37,7 @@ function terminateTask(obj, code, ME)
                 getReport(ME, 'extended', 'hyperlinks','on')
             end
         end
+
     end
 
 end

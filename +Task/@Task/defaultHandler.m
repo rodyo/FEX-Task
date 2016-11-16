@@ -1,5 +1,81 @@
 % Default handler
-function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
+function varargout = defaultHandler(obj, variant) 
+
+    if nargin < 2 || isempty(variant)
+        variant = 'collect_all_warnings'; end
+
+    try    
+        switch lower(variant)
+            case 'collect_all_warnings',  [varargout{1:nargout}] = collect_all_warnings(obj);
+            case 'ignore_all_warnings',   [varargout{1:nargout}] = ignore_all_warnings(obj);
+            case 'warnings_as_error',     [varargout{1:nargout}] = treat_warnings_as_errors(obj);
+            otherwise
+        end
+    
+    catch ME
+        rethrow(ME);        
+    end
+
+end
+
+function varargout = ignore_all_warnings(obj) %#ok<INUSD,STOUT> (attack of the evil eval())
+    
+    try
+        % Run task, suppressing any text output
+        [~] = evalc(['[varargout{1:nargout}] = '...
+                      'obj.callback(obj.parameters{:});']);
+                  
+        % and forego all kinds of warning detection.
+
+    catch ME
+        rethrow(ME);
+    end
+    
+end
+
+function varargout = treat_warnings_as_errors(obj) %#ok<STOUT> (attack of the evil eval())
+
+    warnstates = struct([]);
+    wME = {};
+
+    lastwarn('');
+
+    try
+        % Run task, suppressing any text output
+        text = evalc(['[varargout{1:nargout}] = '...
+                      'obj.callback(obj.parameters{:});']);
+
+        % If there was no text, and we en up here, we know
+        % for sure that no warning was displayed, so we can exit
+        if ~isempty(text)
+            
+            % Otherwise, we'll have to check for warnings
+            [status,...
+             wME,...
+             warnstates] = check_and_toggle_warnings(obj,...
+                                                     wME,...
+                                                     warnstates);
+
+            switch status
+                case {'new warning converted'
+                      'sloppy implementation'}
+
+                    warning(warnstates);
+                    rethrow(wME{1});
+
+                case 'no more warnings'
+                    % no action
+            end
+            
+        end
+
+    catch ME
+        rethrow(ME);
+    end
+
+end
+
+function varargout = collect_all_warnings(obj) %#ok<STOUT> (attack of the evil eval())
 
     % The default is to repeat the task until it issues no
     % more warnings.
@@ -13,7 +89,7 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
         lasterror('reset'); %#ok<LERR>
 
         try
-            % Run task, suppressing any text output            
+            % Run task, suppressing any text output
             text = evalc(['[varargout{1:nargout}] = '...
                           'obj.callback(obj.parameters{:});']);
 
@@ -21,7 +97,7 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
             % for sure that no warning was displayed, so we can exit
             if isempty(text)
                 break; end
-            
+
             % Otherwise, we'll have to manually check for warnings. When
             % found, switch them off by converting them into an error
             [S,...
@@ -33,7 +109,7 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
                 case {'no more warnings'
                       'sloppy implementation'}
                     break;
-                    
+
                 case 'new warning converted'
                     continue;
             end
@@ -54,21 +130,21 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
 
             % Case 1
             if isempty(wME)
-                throwAsCaller(ME);
+                rethrow(ME);
 
             else
                 all_warnings_so_far = cellfun(@(x) x.identifier,...
                                               wME,...
                                               'UniformOutput', false);
-                                
+
                 if ~isempty(ME.cause)
                     wIDs_to_check = cellfun(@(x) x.identifier,...
                                             ME.cause,...
-                                            'UniformOutput', false);                                   
+                                            'UniformOutput', false);
                 else
                     wIDs_to_check = ME.identifier;
                 end
-                
+
                 % Case 2
                 if any(ismember(wIDs_to_check, all_warnings_so_far))
 
@@ -93,10 +169,10 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
                     % catch block because of a warning that is now an
                     % error, but that catch block does not add the
                     % current exception object as a cause.
-                    
+
                     % reset warnings before rethrowing
                     display_and_reset_all_warnings(wME, warnstates)
-                    throwAsCaller(ME);
+                    rethrow(ME);
                 end
 
             end
@@ -109,19 +185,19 @@ function varargout = defaultHandler(obj) %#ok<STOUT> (attack of the evil eval())
     % re-issued after termination of the task progress printer.
     if isempty(wME)
         obj.terminateTask(Task.ExitStatus.COMPLETED);
-    else        
-        % Terminate task with WARNING 
+    else
+        % Terminate task with WARNING
         obj.terminateTask(Task.ExitStatus.WARNING);
-        display_and_reset_all_warnings(wME, warnstates);        
+        display_and_reset_all_warnings(wME, warnstates);
     end
 
 end
 
 function display_and_reset_all_warnings(wME,...
                                         warnstates)
-    
 
-    % The warnings are collected back-to-front; 
+
+    % The warnings are collected back-to-front;
     % sort in the right order
     wME = wME(end:-1:1);
 
@@ -133,7 +209,7 @@ function display_and_reset_all_warnings(wME,...
     warnstates = warning('off', 'backtrace');
     cellfun(@(x) warning(regexprep(x.message, '\\', '\\')), wME);
     warning(warnstates);
-    
+
 end
 
 % Check for warnings and collect/convert if any are found
@@ -146,14 +222,14 @@ function [status,...
     status = 'no more warnings';
 
     % Get warning message, ID
-    [wMsg, wId] = lastwarn();    
-    
-    % No warnings 
-    if isempty(wMsg) && isempty(wId) 
+    [wMsg, wId] = lastwarn();
+
+    % No warnings
+    if isempty(wMsg) && isempty(wId)
         return; end
-    
+
     % No warning message identifier
-    if ~isempty(wMsg) && isempty(wId)           
+    if ~isempty(wMsg) && isempty(wId)
         status     = 'sloppy implementation';
         wME{end+1} = MException([obj.msgId() ':execute:sloppy_implementation'], [...
                                 'Warning found without warning ID; cannot reliably ',...
@@ -162,9 +238,9 @@ function [status,...
                                 wMsg);
         return;
     end
-      
+
     % Warning may be switched off already
-    ws = warning('query', wId);    
+    ws = warning('query', wId);
     if strcmp(ws.state, 'on')
 
         % Process any URLs (and file paths on Windows) in the message, and
@@ -173,12 +249,26 @@ function [status,...
         wMsg = regexprep(wMsg, '%', '%%');
 
         % Collect corresponding exception objects
-        wME{end+1} = MException(wId, wMsg);
+        try
+            wME{end+1} = MException(wId, wMsg);
+            
+            % Switch off the warning, by converting it into an error
+            status     = 'new warning converted';
+            warnstates = [warnstates;
+                          warning('error', wId)]; %#ok<WNTAG,CTPCT>
+                      
+        catch ME %#ok<MUCTH> (bug in R2010a mlint)            
+            status     = 'sloppy implementation';
+            wME{end+1} = MException([obj.msgId() ':execute:sloppy_implementation'], [...
+                                'Warning found with improperly formatted warning ID; ',...
+                                'cannot reliably continue further warning detection. ',...
+                                'Original warning message was: ''%s''. The error that ',...
+                                'occurred during construction of the exception was: ',...
+                                '''%s''.'],...
+                                wMsg, ME.message);
+        end
 
-        % Switch off the warning, by converting it into an error        
-        status     = 'new warning converted';
-        warnstates = [warnstates;
-                      warning('error', wId)]; %#ok<WNTAG,CTPCT>     
+        
     end
 
 end
