@@ -19,12 +19,18 @@ function Task_DEMO()
     T.callback = @demo_task_0B;
     T.execute();
     
-    % Task with 2 warnings (collected) 
+    % Task with 2 warnings (collected, terse display) 
     T.message  = 'Running demo task 0/B, (has 2 warnings, collected)';
     T.handler = 'collect_warnings';
     T.execute();
     
+    % Task with 2 warnings (collected, verbose display) 
+    T.message = 'Running demo task 0/B, (has 2 warnings, which are verbosely displayed)';
+    T.display = 'verbose';
+    T.execute();
+    
     % Task with 2 warnings (treated as error) 
+    T.display = 'terse';
     try
         T.message = 'Running demo task 0/B, (has 2 warnings, treated as error)';
         T.handler = 'treat_as_error';
@@ -140,7 +146,7 @@ end
 
 % Demo task 0/B. Do nothing, with warnings
 function demo_task_0B()
-
+    
     warning([mfilename ':some_warning'],...
             'This warning will be ignored or collected.');
            

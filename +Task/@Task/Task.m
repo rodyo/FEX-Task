@@ -28,7 +28,7 @@ classdef Task < handle
     properties
 
         message    = 'Task'
-        display    = true
+        display    = 'terse'
         callback   = @(varargin)[]
         parameters = {}
         isAtomic   = true
@@ -120,8 +120,17 @@ classdef Task < handle
         end
 
         function set.display(obj, display)
-            obj.display = obj.checkDatatype('display', display, 'logical');
-            obj.display = obj.display(1);
+            
+            new_display = lower( obj.checkDatatype('display', display, 'char') );
+            
+            switch new_display
+                case {'on' 'off' 'terse' 'verbose'}
+                    obj.display = new_display;                    
+                otherwise
+                    error([obj.msgId() ':invalid_display_string'], [...
+                          'Unsupported display string: ''%s''. Supported strings ',...
+                          'are ''off'', ''terse'', or ''verbose''.']);
+            end
         end
 
         function set.isAtomic(obj, isAtomic)

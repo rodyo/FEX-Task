@@ -41,10 +41,11 @@ function [text, varargout] = do_task(obj) %#ok<INUSD,STOUT> (attack of the evil 
              
 end
 
+
 % Helper function: parse text that would have been written to the command window
 % by the user-task. Detect warning signatures, and render them into data
 % that can be processed easily by MException and/or rethrow()
-function [wMsg, wId, stack] = process_warnings_in_text(text)
+function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     
     % Text containint warnings with verbose and backtrace switched on has
     % the following signature:
@@ -67,6 +68,7 @@ function [wMsg, wId, stack] = process_warnings_in_text(text)
     wMsg  = {};
     wId   = {};
     stack = {};
+    raw   = {};
 
     % No text -> no warnings
     if isempty(text)
@@ -85,6 +87,7 @@ function [wMsg, wId, stack] = process_warnings_in_text(text)
     stack_out = cell(size(hits));
     wMsg_out  = cell(size(hits));
     wId_out   = cell(size(hits));
+    raw_out   = cell(size(hits));
 
     hits = [hits; numel(text)];
     for ii = 1:numel(hits)-1
@@ -107,6 +110,9 @@ function [wMsg, wId, stack] = process_warnings_in_text(text)
 
         % And slice it off from the rest of the text
         stack = warn_txt(stack_extent);
+        
+        % The entire, raw warning message:
+        raw_out{ii} = warn_txt(1:stack_end);
 
         % Find warning message, ID
         warnMsg = warn_txt(1:stack_extent(1)-1);
@@ -140,6 +146,7 @@ function [wMsg, wId, stack] = process_warnings_in_text(text)
     wMsg  = wMsg_out;
     wId   = wId_out;
     stack = stack_out; 
+    raw   = raw_out;
     
 end
 
@@ -174,7 +181,7 @@ function varargout = treat_warnings_as_errors(obj)
         if ~isempty(text)
             
             % Parse the text
-            [wMsg, wId, stack] = process_warnings_in_text(text);
+            [wMsg, wId, stack, raw] = process_warnings_in_text(text);
             
             % Some warnings were indeed present
             if ~isempty(wMsg)
@@ -199,8 +206,13 @@ function varargout = treat_warnings_as_errors(obj)
                 obj.terminateTask(Task.ExitStatus.ERROR);
                 
                 % Display all collected warnings except the last
-                disp(char(strcat({'Warning: '}, wMsg(1:end-1))));                
-
+                switch obj.display
+                    case {'on' 'terse'}
+                        disp(char(strcat({'Warning: '}, wMsg(1:end-1))));    
+                    case 'verbose'
+                        cellfun(@(x) disp(char(x)), raw);
+                end
+                
                 % Create error structure for the last warning
                 err = struct(...
                     'message'   , wMsg{end},...
@@ -217,7 +229,7 @@ function varargout = treat_warnings_as_errors(obj)
         % And terminate task
         obj.terminateTask(Task.ExitStatus.COMPLETED);
         
-    catch ME
+    catch ME     
         rethrow(ME);
     end
     
@@ -226,7 +238,7 @@ end
 
 % Variant default handler: collect all warnings, and report all of them. 
 function varargout = collect_all_warnings(obj)
-
+ 
     try        
         % Run task, suppressing any text output
         [text, varargout{1:nargout}] = do_task(obj);
@@ -238,7 +250,7 @@ function varargout = collect_all_warnings(obj)
         if ~isempty(text)
             
             % Parse the text
-            wMsg = process_warnings_in_text(text);
+            [wMsg, ~,~, raw] = process_warnings_in_text(text);
             
             % Some warnings were indeed present
             if ~isempty(wMsg)
@@ -247,7 +259,13 @@ function varargout = collect_all_warnings(obj)
                 obj.terminateTask(Task.ExitStatus.WARNING);
                 
                 % Display all collected warnings and return 
-                disp(char(strcat({'Warning: '}, wMsg)));                
+                switch obj.display
+                    case {'on' 'terse'}
+                        disp(char(strcat({'Warning: '}, wMsg)));                
+                    case 'verbose'
+                        cellfun(@(x) disp(char(x)), raw);
+                end
+                
                 return;
             end
 
@@ -256,7 +274,7 @@ function varargout = collect_all_warnings(obj)
         obj.terminateTask(Task.ExitStatus.COMPLETED);
         
         
-    catch ME
+    catch ME        
         rethrow(ME);
     end
     
