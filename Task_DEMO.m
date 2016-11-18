@@ -1,7 +1,7 @@
 function Task_DEMO()
     
     import Task.*;
-    clc
+     clc
 
     %% Singular tasks
     % ===================================================================
@@ -35,7 +35,7 @@ function Task_DEMO()
         T.message = 'Running demo task 0/B, (has 2 warnings, treated as error)';
         T.handler = 'treat_as_error';
         T.execute();
-    catch ME %#ok<MUCTH>
+    catch ME,ME; %#ok<VUNUS>
         disp(['(When run outside this demo, this would be an error): ' ME.message]);
     end
 
@@ -45,7 +45,7 @@ function Task_DEMO()
         T.message = 'Running demo task 0/C, (has 1 error)';
         T.callback = @demo_task_0C;
         T.execute();
-    catch ME %#ok<MUCTH>
+    catch ME,ME; %#ok<VUNUS>
         disp(['(When run outside this demo, this would be an error): ' ME.message]);
     end
 
@@ -136,8 +136,6 @@ function Task_DEMO()
     
     OK = tasks.execute();
     
-
-
 end
 
 % Demo task 0/A. Do nothing, successfully

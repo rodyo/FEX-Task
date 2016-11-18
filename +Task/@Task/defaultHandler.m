@@ -76,7 +76,7 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
 
     % First, find the start of all warnings
     text = regexp(text, char(10), 'split')';
-    hits = regexp(text, '^{\bWarning: ' );
+    hits = regexp(text, '^[\[{]\bWarning: ' );
     hits = find(~cellfun('isempty', hits));
 
     % None found: hurray!
@@ -112,34 +112,47 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
         stack = warn_txt(stack_extent);
         
         % The entire, raw warning message:
-        raw_out{ii} = warn_txt(1:stack_end);
+        raw_out{ii} = [warn_txt(1:stack_end); ' '];
 
         % Find warning message, ID
         warnMsg = warn_txt(1:stack_extent(1)-1);
-        newWid  = regexp(warnMsg{end}, '\(Type "warning off ([^"]+)" to suppress this warning.\)}\b', 'tokens', 'once');
+        warnMsg = warnMsg( cellfun('isempty', regexp(warnMsg, '^\s*\]*\b*\s*$')) );
+        newWid  = regexp(warnMsg{end}, [...
+                         '\(Type ".*warning off (?<wID>[^<"]+)".*to suppress this ',...
+                         'warning.\)'], 'names');
         if isempty(newWid)
             newWid = ''; 
         else
-            newWid = newWid{1};
+            newWid = newWid.wID;
             warnMsg(end) = [];        
         end
 
-        wMsg_out{ii} = char(regexprep(warnMsg, '^{\bWarning: ', ''));    
+        wMsg_out{ii} = char(regexprep(warnMsg, '^[\[{]\bWarning: ', ''));    
         wId_out{ii}  = newWid;
 
+        % Exclude all Task-related files from the stack and raw string
+        remove_task = @(x) x( cellfun('isempty', strfind(x, fullfile('+Task', '@Task'))) );
+        stack       = remove_task(stack);
+        raw_out{ii} = remove_task(raw_out{ii});
 
-        % Exclude all Task-related files from the stack
-        stack = stack(cellfun('isempty', strfind(stack, fullfile('+Task', '@Task'))));
-
-        % Split the HTML links up in filename, line number
-        % and function name to form a structure like the
-        % one returned by dbstack()
-        stack = regexp(stack, '^[^'']+''([^'']+)''\s*,\s*([\d]+)[^"]+">([^\s]+).*$', 'tokens', 'once');
-        stack_out{ii} = struct('file', cellfun(@(x)x{1}, stack, 'UniformOutput', false),...
-            'name', cellfun(@(x)x{3}, stack, 'UniformOutput', false),...
-            'line', cellfun(@(x) str2double(x{2}), stack, 'UniformOutput', false) ...
-            );
-
+        % Split the HTML links up in filename, line number and function name 
+        % to form a structure like the one returned by dbstack()
+        stack = regexp(stack, [...
+                       '^[^'']+''',...
+                       '(?<file>[^'']+)',...  % FILE
+                       '''\s*,\s*',...
+                       '(?<line>[\d]+)',...   % LINE
+                       '[^"]+">',...
+                        '(?<name>[^\s]+)',... % NAME
+                       '.*$'],...
+                       'names');
+                   
+        stack = [stack{:}]';
+        for s = 1:numel(stack)
+            stack(s).line = str2double(stack(s).line); end
+        
+        stack_out{ii} = stack;
+        
     end
 
     % Rename for output
