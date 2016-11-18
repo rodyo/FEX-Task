@@ -1,5 +1,5 @@
 function Task_DEMO()
-
+    
     import Task.*;
     clc
 
@@ -9,16 +9,34 @@ function Task_DEMO()
     % Simplest use case -- default handler
 
     % Task without error or warning
-    T = Task('Running demo task 0/A, which may have errors/warnings...',...
+    T = Task('Running demo task 0/A (does nothing)',...
              @demo_task_0A);
     T.execute();
 
-    % Task with 2 warnings
+    
+    % Task with 2 warnings (ignored)
+    T.message  = 'Running demo task 0/B, (has 2 warnings, ignored)';
     T.callback = @demo_task_0B;
     T.execute();
+    
+    % Task with 2 warnings (collected) 
+    T.message  = 'Running demo task 0/B, (has 2 warnings, collected)';
+    T.handler = 'collect_warnings';
+    T.execute();
+    
+    % Task with 2 warnings (treated as error) 
+    try
+        T.message = 'Running demo task 0/B, (has 2 warnings, treated as error)';
+        T.handler = 'treat_as_error';
+        T.execute();
+    catch ME %#ok<MUCTH>
+        disp(['(When run outside this demo, this would be an error): ' ME.message]);
+    end
 
     % Task with error
+    T.handler = [];
     try
+        T.message = 'Running demo task 0/C, (has 1 error)';
         T.callback = @demo_task_0C;
         T.execute();
     catch ME %#ok<MUCTH>
@@ -26,16 +44,19 @@ function Task_DEMO()
     end
 
 
-    % Different handlers and task functions 
+    %% Different handlers and task functions 
+    % ===================================================================
+    
+    fprintf(1, '\n\n');
 
     % OK/Skip
-    T = Task('Running OK/Skip task',...
+    T = Task('Running OK/Skip task (set to return OK)',...
              @demo_task_1A,...
              1);
     T.handler = @CommonHandlers.logicalOkSkip;
     T.execute();
 
-    T.message = 'Running OK/Skip task';
+    T.message = 'Running OK/Skip task (set to SKIP)';
     T.callback = @demo_task_1B;
     T.execute();
 
@@ -43,22 +64,22 @@ function Task_DEMO()
     % Pass/Fail
     T.handler = @CommonHandlers.logicalPassFail;
 
-    T.message = 'Running Pass/Fail task';
+    T.message = 'Running Pass/Fail task (set to PASS)';
     T.callback = @demo_task_1A;
     T.execute();
 
-    T.message = 'Running Pass/Fail task';
+    T.message = 'Running Pass/Fail task (set to FAIL)';
     T.callback = @demo_task_1B;
     T.execute();
 
     % Yes/No
     T.handler = @CommonHandlers.logicalYesNo;
 
-    T.message = 'Running Yes/No task';
+    T.message = 'Running Yes/No task (set to YES)';
     T.callback = @demo_task_1A;
     T.execute();
 
-    T.message = 'Running Yes/No task';
+    T.message = 'Running Yes/No task (set to NO)';
     T.callback = @demo_task_1B;
     T.execute();
 
@@ -121,17 +142,17 @@ end
 function demo_task_0B()
 
     warning([mfilename ':some_warning'],...
-            'This warning will be collected.');
-
+            'This warning will be ignored or collected.');
+           
     warning([mfilename ':some_other_warning'],...
-            'This one wil too.');
+            'Also this warning will be ignored, collected or treated as error.');
         
 end
 
 % Demo task 0/C. Do nothing, with error
 function demo_task_0C()        
     error([mfilename ':some_error'],...
-          'This error will fail the task.');
+          'This error will normally fail the task.');
 end
 
 

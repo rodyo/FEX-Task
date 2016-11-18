@@ -1,73 +1,20 @@
 % Default handler
-function varargout = defaultHandler(obj, variant) 
+function varargout = defaultHandler(obj, variant)
 
+    % The top-level method is just a wrapper for everything below
+    
+    % Use default handler when argument is abscent or empty
     if nargin < 2 || isempty(variant)
-        variant = 'collect_all_warnings'; end
+        variant = 'collect_warnings'; end
 
-    try    
+    % Call the appropriate variant
+    try
         switch lower(variant)
-            case 'collect_all_warnings',  [varargout{1:nargout}] = collect_all_warnings(obj);
-            case 'ignore_all_warnings',   [varargout{1:nargout}] = ignore_all_warnings(obj);
-            case 'warnings_as_error',     [varargout{1:nargout}] = treat_warnings_as_errors(obj);
+            case 'collect_warnings',  [varargout{1:nargout}] = collect_all_warnings(obj);
+            case 'ignore_warnings',   [varargout{1:nargout}] = ignore_all_warnings(obj);
+            case 'treat_as_error',    [varargout{1:nargout}] = treat_warnings_as_errors(obj);
             otherwise
         end
-    
-    catch ME
-        rethrow(ME);        
-    end
-
-end
-
-function varargout = ignore_all_warnings(obj) %#ok<INUSD,STOUT> (attack of the evil eval())
-    
-    try
-        % Run task, suppressing any text output
-        [~] = evalc(['[varargout{1:nargout}] = '...
-                      'obj.callback(obj.parameters{:});']);
-                  
-        % and forego all kinds of warning detection.
-
-    catch ME
-        rethrow(ME);
-    end
-    
-end
-
-function varargout = treat_warnings_as_errors(obj) %#ok<STOUT> (attack of the evil eval())
-
-    warnstates = struct([]);
-    wME = {};
-
-    lastwarn('');
-
-    try
-        % Run task, suppressing any text output
-        text = evalc(['[varargout{1:nargout}] = '...
-                      'obj.callback(obj.parameters{:});']);
-
-        % If there was no text, and we en up here, we know
-        % for sure that no warning was displayed, so we can exit
-        if ~isempty(text)
-            
-            % Otherwise, we'll have to check for warnings
-            [status,...
-             wME,...
-             warnstates] = check_and_toggle_warnings(obj,...
-                                                     wME,...
-                                                     warnstates);
-
-            switch status
-                case {'new warning converted'
-                      'sloppy implementation'}
-
-                    warning(warnstates);
-                    rethrow(wME{1});
-
-                case 'no more warnings'
-                    % no action
-            end
-            
-        end
 
     catch ME
         rethrow(ME);
@@ -75,200 +22,244 @@ function varargout = treat_warnings_as_errors(obj) %#ok<STOUT> (attack of the ev
 
 end
 
-function varargout = collect_all_warnings(obj) %#ok<STOUT> (attack of the evil eval())
+% Helper function: carry out the user task. Capture any textual output for
+% further processing later on. Make sure the information emitted by
+% warning() is at its maximum verbosity. 
+function [text, varargout] = do_task(obj) %#ok<INUSD,STOUT> (attack of the evil eval())
 
-    % The default is to repeat the task until it issues no
-    % more warnings.
-
-    warnstates = struct([]);
-    wME = {};
-
-    while true
-
-        lastwarn('');
-        lasterror('reset'); %#ok<LERR>
-
-        try
-            % Run task, suppressing any text output
-            text = evalc(['[varargout{1:nargout}] = '...
-                          'obj.callback(obj.parameters{:});']);
-
-            % If there was no text, and we en up here, we know
-            % for sure that no warning was displayed, so we can exit
-            if isempty(text)
-                break; end
-
-            % Otherwise, we'll have to manually check for warnings. When
-            % found, switch them off by converting them into an error
-            [S,...
-             wME,...
-             warnstates] = check_and_toggle_warnings(obj,...
-                                                     wME,...
-                                                     warnstates);
-            switch S
-                case {'no more warnings'
-                      'sloppy implementation'}
-                    break;
-
-                case 'new warning converted'
-                    continue;
-            end
-
-
-        catch ME
-            % If we end up here, one of two things might have happened:
-            %
-            %   1. a genuine error occurred ni the task function
-            %   2. an error occurred that we intentioanlly converted
-            %      into an error
-            %
-            % In the first case, we can immediately rethrow.
-            %
-            % In the second case, we'll have to check whether there have been
-            % any more warnings. If so, they are converted into errors like before,
-            % and we continue. If there are none, we are done!
-
-            % Case 1
-            if isempty(wME)
-                rethrow(ME);
-
-            else
-                all_warnings_so_far = cellfun(@(x) x.identifier,...
-                                              wME,...
-                                              'UniformOutput', false);
-
-                if ~isempty(ME.cause)
-                    wIDs_to_check = cellfun(@(x) x.identifier,...
-                                            ME.cause,...
-                                            'UniformOutput', false);
-                else
-                    wIDs_to_check = ME.identifier;
-                end
-
-                % Case 2
-                if any(ismember(wIDs_to_check, all_warnings_so_far))
-
-                      [S,...
-                       wME,...
-                       warnstates] = check_and_toggle_warnings(obj,...
-                                                               wME,...
-                                                               warnstates);
-
-                    switch S
-                        case {'no more warnings', 'sloppy implementation'}
-                            break;
-
-                        case 'new warning found'
-                            continue;
-                    end
-
-                % Case 1, but before previously reached warnings are
-                % encountered
-                else
-                    % Ending up here is most likely due to ending up in a
-                    % catch block because of a warning that is now an
-                    % error, but that catch block does not add the
-                    % current exception object as a cause.
-
-                    % reset warnings before rethrowing
-                    display_and_reset_all_warnings(wME, warnstates)
-                    rethrow(ME);
-                end
-
-            end
-
-        end
-
-    end
-
-    % All warnings are switched back to their previous states, and
-    % re-issued after termination of the task progress printer.
-    if isempty(wME)
-        obj.terminateTask(Task.ExitStatus.COMPLETED);
-    else
-        % Terminate task with WARNING
-        obj.terminateTask(Task.ExitStatus.WARNING);
-        display_and_reset_all_warnings(wME, warnstates);
-    end
-
+    % Make sure stack info and IDs are present in all warnings
+    verb_state  = warning('on', 'verbose');
+    trace_state = warning('on', 'backtrace');
+    
+    % Reset settings to whatever they were before task
+    oC1 = onCleanup(@() warning(verb_state) );
+    oC2 = onCleanup(@() warning(trace_state));
+    
+    % Run task, suppressing any text output
+    text = evalc(['[varargout{1:nargout-1}] = '...
+                 'obj.callback(obj.parameters{:});']);
+             
 end
 
-function display_and_reset_all_warnings(wME,...
-                                        warnstates)
+% Helper function: parse text that would have been written to the command window
+% by the user-task. Detect warning signatures, and render them into data
+% that can be processed easily by MException and/or rethrow()
+function [wMsg, wId, stack] = process_warnings_in_text(text)
+    
+    % Text containint warnings with verbose and backtrace switched on has
+    % the following signature:
+    %
+    %     (other, possibly user-generated text)
+    % 
+    %     {\bWarning: <warning message here>
+    %     (Type "warning off warning:id" to suppress this warning.)}\b
+    %     > In <a href="matlab: opentoline('/path/to/some/file',10,1)">function_name>subfcn>nested_fcn at 10</a>
+    %       In <a href="matlab: opentoline('/path/to/some/other/file',100,1)">function_name>subfcn>nested_fcn at 100</a>                        
+    %       ...
+    %       In <a href="matlab: opentoline('/ppath/to/yet/another/file',1000,1)">function_name>subfcn>nested_fcn at 1000</a>
+    %   
+    %     (other, possibly user-generated text)
+    %     ...
+    %
+    % Note that the warning ID may be missing, in which case the line after
+    % the warning will be abscent.
+    
+    wMsg  = {};
+    wId   = {};
+    stack = {};
 
-
-    % The warnings are collected back-to-front;
-    % sort in the right order
-    wME = wME(end:-1:1);
-
-    % Reset all warnings to their original states
-    if all(isfield(warnstates, {'state' 'identifier'}))
-        warning(warnstates); end
-
-    % And show collected warnings as plain strings
-    warnstates = warning('off', 'backtrace');
-    cellfun(@(x) warning(regexprep(x.message, '\\', '\\')), wME);
-    warning(warnstates);
-
-end
-
-% Check for warnings and collect/convert if any are found
-function [status,...
-          wME,...
-          warnstates] = check_and_toggle_warnings(obj,...
-                                                  wME,...
-                                                  warnstates)
-
-    status = 'no more warnings';
-
-    % Get warning message, ID
-    [wMsg, wId] = lastwarn();
-
-    % No warnings
-    if isempty(wMsg) && isempty(wId)
+    % No text -> no warnings
+    if isempty(text)
         return; end
 
-    % No warning message identifier
-    if ~isempty(wMsg) && isempty(wId)
-        status     = 'sloppy implementation';
-        wME{end+1} = MException([obj.msgId() ':execute:sloppy_implementation'], [...
-                                'Warning found without warning ID; cannot reliably ',...
-                                'continue further warning detection. Warning ',...
-                                'message was: ''%s''.'],...
-                                wMsg);
-        return;
-    end
+    % First, find the start of all warnings
+    text = regexp(text, char(10), 'split')';
+    hits = regexp(text, '^{\bWarning: ' );
+    hits = find(~cellfun('isempty', hits));
 
-    % Warning may be switched off already
-    ws = warning('query', wId);
-    if strcmp(ws.state, 'on')
+    % None found: hurray!
+    if isempty(hits)
+        return; end
 
-        % Process any URLs (and file paths on Windows) in the message, and
-        % collect for reissuing later on
-        wMsg = regexprep(wMsg, '\\', '\\\\');
-        wMsg = regexprep(wMsg, '%', '%%');
+    % Some warnings are found 
+    stack_out = cell(size(hits));
+    wMsg_out  = cell(size(hits));
+    wId_out   = cell(size(hits));
 
-        % Collect corresponding exception objects
-        try
-            wME{end+1} = MException(wId, wMsg);
-            
-            % Switch off the warning, by converting it into an error
-            status     = 'new warning converted';
-            warnstates = [warnstates;
-                          warning('error', wId)]; %#ok<WNTAG,CTPCT>
-                      
-        catch ME %#ok<MUCTH> (bug in R2010a mlint)            
-            status     = 'sloppy implementation';
-            wME{end+1} = MException([obj.msgId() ':execute:sloppy_implementation'], [...
-                                'Warning found with improperly formatted warning ID; ',...
-                                'cannot reliably continue further warning detection. ',...
-                                'Original warning message was: ''%s''. The error that ',...
-                                'occurred during construction of the exception was: ',...
-                                '''%s''.'],...
-                                wMsg, ME.message);
+    hits = [hits; numel(text)];
+    for ii = 1:numel(hits)-1
+
+        hit     = hits(ii);
+        nexthit = hits(ii+1);
+
+        % The "text", from the first hit to the end, will
+        % contain our stack information.
+        warn_txt = text(hit:nexthit);
+        stack    = strfind(warn_txt,...
+                           'In <a href="matlab: opentoline(');
+
+        % Find the precise extent
+        stack_extent = ~cellfun('isempty', stack);
+        stack_start  = find(stack_extent, 1, 'first');
+        stack_extent(stack_start:-1:1) = true;
+        stack_end    = find(stack_extent == false, 1, 'first') - 1;
+        stack_extent = stack_start : stack_end;
+
+        % And slice it off from the rest of the text
+        stack = warn_txt(stack_extent);
+
+        % Find warning message, ID
+        warnMsg = warn_txt(1:stack_extent(1)-1);
+        newWid  = regexp(warnMsg{end}, '\(Type "warning off ([^"]+)" to suppress this warning.\)}\b', 'tokens', 'once');
+        if isempty(newWid)
+            newWid = ''; 
+        else
+            newWid = newWid{1};
+            warnMsg(end) = [];        
         end
 
-        
+        wMsg_out{ii} = char(regexprep(warnMsg, '^{\bWarning: ', ''));    
+        wId_out{ii}  = newWid;
+
+
+        % Exclude all Task-related files from the stack
+        stack = stack(cellfun('isempty', strfind(stack, fullfile('+Task', '@Task'))));
+
+        % Split the HTML links up in filename, line number
+        % and function name to form a structure like the
+        % one returned by dbstack()
+        stack = regexp(stack, '^[^'']+''([^'']+)''\s*,\s*([\d]+)[^"]+">([^\s]+).*$', 'tokens', 'once');
+        stack_out{ii} = struct('file', cellfun(@(x)x{1}, stack, 'UniformOutput', false),...
+            'name', cellfun(@(x)x{3}, stack, 'UniformOutput', false),...
+            'line', cellfun(@(x) str2double(x{2}), stack, 'UniformOutput', false) ...
+            );
+
+    end
+
+    % Rename for output
+    wMsg  = wMsg_out;
+    wId   = wId_out;
+    stack = stack_out; 
+    
+end
+
+% Default handler: ignore all warnings; don't report any of them
+function varargout = ignore_all_warnings(obj)
+
+    try
+        % Run task, suppressing any text output
+        [~, varargout{1:nargout}] = do_task(obj);
+
+        % and forego all kinds of warning detection.
+        obj.terminateTask(Task.ExitStatus.COMPLETED);
+
+    catch ME
+        rethrow(ME);
     end
 
 end
+
+% Variant default handler: collect all warnings. Report all of them, and
+% treat the last warning as error
+function varargout = treat_warnings_as_errors(obj)
+
+    try        
+        % Run task, suppressing any text output
+        [text, varargout{1:nargout}] = do_task(obj);
+
+        % If there was no text, and we end up here, we know
+        % for sure that no warning was displayed, so we can exit.
+        % Otherwise, we'll have to look for warnings, display them, and
+        % throw the last one as error.
+        if ~isempty(text)
+            
+            % Parse the text
+            [wMsg, wId, stack] = process_warnings_in_text(text);
+            
+            % Some warnings were indeed present
+            if ~isempty(wMsg)
+
+                % TODO: (Rody Oldenhuis) "rethrow" will be removed in a 
+                % future release. Well, that's cute 'n all, but how
+                % on Earth would one throw the last warning as an error, 
+                % without repeating the task? 
+                %
+                % The only way I can think of is to parse the
+                % captured 'text', and look for warning signatures
+                % and backtraces, convert those into proper call stacks, 
+                % and throw the error as if rethrown from the task.
+                % 
+                % This is only possible with rethrow() with an
+                % error structure, since MExceptions() don't allow
+                % user-level control over the call stack. 
+                %
+                % So, unless there's someone with a better idea,
+                % this is what we do here. 
+                
+                obj.terminateTask(Task.ExitStatus.ERROR);
+                
+                % Display all collected warnings except the last
+                disp(char(strcat({'Warning: '}, wMsg(1:end-1))));                
+
+                % Create error structure for the last warning
+                err = struct(...
+                    'message'   , wMsg{end},...
+                    'identifier', wId{end},...
+                    'stack'     , stack{end});
+
+                % And hurl it!
+                rethrow(err); %#ok<>
+
+            end
+
+        end
+        
+        % And terminate task
+        obj.terminateTask(Task.ExitStatus.COMPLETED);
+        
+    catch ME
+        rethrow(ME);
+    end
+    
+end
+
+
+% Variant default handler: collect all warnings, and report all of them. 
+function varargout = collect_all_warnings(obj)
+
+    try        
+        % Run task, suppressing any text output
+        [text, varargout{1:nargout}] = do_task(obj);
+
+        % If there was no text, and we end up here, we know
+        % for sure that no warning was displayed, so we can exit.
+        % Otherwise, we'll have to look for warnings, display them, and
+        % throw the last one as error.
+        if ~isempty(text)
+            
+            % Parse the text
+            wMsg = process_warnings_in_text(text);
+            
+            % Some warnings were indeed present
+            if ~isempty(wMsg)
+                
+                % Terminate task with WARNING status
+                obj.terminateTask(Task.ExitStatus.WARNING);
+                
+                % Display all collected warnings and return 
+                disp(char(strcat({'Warning: '}, wMsg)));                
+                return;
+            end
+
+        end
+        
+        obj.terminateTask(Task.ExitStatus.COMPLETED);
+        
+        
+    catch ME
+        rethrow(ME);
+    end
+    
+end
+
+

@@ -31,13 +31,20 @@ classdef Task < handle
         display    = true
         callback   = @(varargin)[]
         parameters = {}
-        isAtomic   = false
+        isAtomic   = true
 
         handler = @()[]
         cleaner = @()[]
 
     end
 
+
+    properties (Hidden, Access = private)
+
+        can_terminate   = false;
+        handler_variant = 'ignore_warnings'
+
+    end
 
     properties (Hidden, GetAccess = private, Constant)
 
@@ -67,9 +74,6 @@ classdef Task < handle
     end
 
 
-    properties (Hidden, Access = private)
-        can_terminate = false;
-    end
 
 
     %% Class functionality
@@ -92,14 +96,18 @@ classdef Task < handle
 
         % Deep copy existing Task object
         function new_obj = copy(obj)
+
             new_obj = Task.Task(obj.message,...
                                 obj.callback,...
                                 obj.parameters{:});
 
-            new_obj.handler       = obj.handler;
-            new_obj.cleaner       = obj.cleaner;
-            new_obj.display       = obj.display;
-            new_obj.can_terminate = obj.can_terminate;
+            new_obj.isAtomic        = obj.isAtomic;
+            new_obj.handler         = obj.handler;
+            new_obj.cleaner         = obj.cleaner;
+            new_obj.display         = obj.display;
+            new_obj.can_terminate   = obj.can_terminate;
+            new_obj.handler_variant = obj.handler_variant;
+
         end
 
         % Execute task
@@ -130,7 +138,36 @@ classdef Task < handle
         end
 
         function set.handler(obj, handler)
-            obj.handler = obj.checkDatatype('handler', handler, 'function_handle');
+
+            % Allow '[]' input
+            if isa(handler, 'double') && isempty(handler)
+                handler = ''; end
+
+            new_fcn = obj.checkDatatype('handler', handler, {'function_handle', 'char'});
+
+            if ischar(new_fcn)
+
+                % Set back to default when argument is empty
+                if isempty(new_fcn)
+                    new_fcn = 'ignore_warnings'; end
+
+                % Select variant of default handler
+                switch lower(new_fcn)
+
+                    case {'ignore_warnings' 'collect_warnings' 'treat_as_error'}
+                        obj.handler = @()[];
+                        obj.handler_variant = new_fcn; %#ok<MCSUP>
+
+                    otherwise
+                        error([obj.msgId() ':invalid_default_handler'], [...
+                              'Default handlers must be specified by ''ignore_warnings'', ',...
+                              '''collect_warnings'' or ''treat_as_error''.']);
+                end
+
+            else
+                obj.handler = new_fcn;
+            end
+
         end
 
         function set.cleaner(obj, cleaner)
@@ -158,10 +195,28 @@ classdef Task < handle
 
         % helper for setters: check datatype of input
         function data = checkDatatype(obj, propertyname, data, expectedtype)
-            assert(isa(data, expectedtype),...
-                  [obj.msgId() ':invalid_datatype'], ...
-                  'Task property ''%s'' must have type ''%s''.',...
-                  propertyname, expectedtype);
+
+            if ischar(expectedtype)
+                expectedtype = {expectedtype}; end
+
+            fmt = '''%s''.';
+            if numel(expectedtype) > 1
+                if numel(expectedtype) == 2
+                    fmt = '''%s'' or ''%s''.';
+                else
+                    fmt = [repmat('''%s'', ', 1, numel(expectedtype)-1) 'or ''%s''.'];
+                end
+            end
+
+            try
+                assert(any( cellfun(@(x) isa(data,x), expectedtype) ),...
+                          [obj.msgId() ':invalid_datatype'], [...
+                          'Task property ''%s'' must have type ' fmt],...
+                          propertyname, expectedtype{:});
+            catch ME
+                throwAsCaller(ME);
+            end
+            
         end
 
     end
