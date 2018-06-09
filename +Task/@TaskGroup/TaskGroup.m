@@ -5,9 +5,9 @@ classdef TaskGroup < handle
 %
 % See also Task, ExitStatus, disp, fprintf.
 
-
-% Author: Rody Oldenhuis (oldenhuis@luxspace.lu)
-% Copyright LuxSpace sarl, all rights reserved.
+% Author:
+% Name: Rody Oldenhuis
+% Email: oldenhuis@gmail.com
 
 % Reusability info:
 % --------------------

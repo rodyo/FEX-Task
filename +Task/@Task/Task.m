@@ -7,9 +7,7 @@ classdef Task < handle
 
 % Author:
 % Name: Rody Oldenhuis
-% Email: oldenhuis@gmail.com   (personal)
-%        oldenhuis@luxspace.lu (professional)
-%
+% Email: oldenhuis@gmail.com
 
 % Reusability info:
 % --------------------
@@ -120,12 +118,12 @@ classdef Task < handle
         end
 
         function set.display(obj, display)
-            
+
             new_display = lower( obj.checkDatatype('display', display, 'char') );
-            
+
             switch new_display
                 case {'on' 'off' 'terse' 'verbose'}
-                    obj.display = new_display;                    
+                    obj.display = new_display;
                 otherwise
                     error([obj.msgId() ':invalid_display_string'], [...
                           'Unsupported display string: ''%s''. Supported strings ',...
@@ -225,7 +223,7 @@ classdef Task < handle
             catch ME
                 throwAsCaller(ME);
             end
-            
+
         end
 
     end
