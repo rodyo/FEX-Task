@@ -1,4 +1,4 @@
-classdef Task < handle
+classdef Task < matlab.mixin.Copyable
 % TASK      Task object
 %
 % Give a professional look to a set of tasks.
@@ -12,7 +12,7 @@ classdef Task < handle
 % Reusability info:
 % --------------------
 % PLATFORM    : at least Windows, MacOS, Linux
-% MIN. MATLAB : at least R2010a and up
+% MIN. MATLAB : at least R2011b and up
 % CODEGEN     : no
 % DEPENDENCIES: Task.ExitStatus
 
@@ -21,10 +21,9 @@ classdef Task < handle
 % https://www.paypal.me/RodyO/3.5
 
 
-    %% Class data
+    %% Properties
 
     properties
-
         message    = 'Task'
         display    = 'terse'
         callback   = @(varargin)[]
@@ -33,15 +32,11 @@ classdef Task < handle
 
         handler = @()[]
         cleaner = @()[]
-
     end
 
-
     properties (Hidden, Access = private)
-
         can_terminate   = false;
         handler_variant = 'ignore_warnings'
-
     end
 
     properties (Hidden, GetAccess = private, Constant)
@@ -71,11 +66,9 @@ classdef Task < handle
 
     end
 
-
-
-
-    %% Class functionality
-
+    %% Methods
+    
+    % Class basics
     methods
 
         % Constructor
@@ -92,26 +85,7 @@ classdef Task < handle
                 obj.terminateTask(Task.ExitStatus.INCOMPLETE); end
         end
 
-        % Deep copy existing Task object
-        function new_obj = copy(obj)
-
-            new_obj = Task.Task(obj.message,...
-                                obj.callback,...
-                                obj.parameters{:});
-
-            new_obj.isAtomic        = obj.isAtomic;
-            new_obj.handler         = obj.handler;
-            new_obj.cleaner         = obj.cleaner;
-            new_obj.display         = obj.display;
-            new_obj.can_terminate   = obj.can_terminate;
-            new_obj.handler_variant = obj.handler_variant;
-
-        end
-
-        % Execute task
-        varargout = execute(obj);
-
-        %% Setters/getters
+        % Setters/getters ------------------------------------------------------
 
         function set.message(obj, message)
             obj.message = obj.checkDatatype('message', message, 'char');
@@ -183,7 +157,13 @@ classdef Task < handle
 
     end
 
-
+    % Public functionality
+    methods
+        % Execute task
+        varargout = execute(obj);
+    end
+    
+    % Methods for internal use
     methods (Hidden, Access = private)
 
         % Start tasks: print message and the appropriate amount of spacing characters
@@ -196,7 +176,6 @@ classdef Task < handle
         terminateTask(obj, code, ME);
 
     end
-
 
     methods (Hidden, Access = private)
 
@@ -229,11 +208,9 @@ classdef Task < handle
     end
 
     methods (Hidden, Static, Access = private)
-
         function ID = msgId()
             ID = regexprep(mfilename('class'), '\.', ':');
         end
-
     end
 
 end

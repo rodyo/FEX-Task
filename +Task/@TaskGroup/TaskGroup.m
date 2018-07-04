@@ -1,4 +1,4 @@
-classdef TaskGroup < handle
+classdef TaskGroup < matlab.mixin.Copyable
 % TASKGROUP  container for connected tasks
 %
 % Give a professional look to a set of connected tasks.
@@ -12,28 +12,26 @@ classdef TaskGroup < handle
 % Reusability info:
 % --------------------
 % PLATFORM    : at least Windows, MacOS, Linux
-% MIN. MATLAB : at least R2010a and up
+% MIN. MATLAB : at least R2011b and up
 % CODEGEN     : no
 % DEPENDENCIES: Task.ExitStatus
-
 
 % If you find this work useful, please consider a donation:
 % https://www.paypal.me/RodyO/3.5
 
-    %% Class data
+    %% Properties
 
     properties
-
         Tasks      = {}
 
         hasTopTask = false
         isAtomic   = false
         executeAll = true;
-
     end
 
-    %% Class functionality
+    %% Methods
 
+    % Class basics
     methods
 
         % Constructor
@@ -88,20 +86,29 @@ classdef TaskGroup < handle
             end
 
         end
+        
+        % Setters/getters ------------------------------------------------------
 
-        % Deep copy existing TaskGroup object
-        function new_obj = copy(obj)
-
-            new_obj = Task.TaskGroup();
-
-            new_obj.Tasks      = obj.Tasks;
-
-            new_obj.isAtomic   = obj.isAtomic;
-            new_obj.hasTopTask = obj.hasTopTask;
-            new_obj.executeAll = obj.executeAll;
-
+        function set.hasTopTask(obj, tf)
+            obj.hasTopTask = obj.checkDatatype('hasTopTask', tf, 'logical');
+            obj.hasTopTask = obj.hasTopTask(1);
         end
 
+        function set.isAtomic(obj, tf)
+            obj.isAtomic = obj.checkDatatype('isAtomic', tf, 'logical');
+            obj.isAtomic = obj.isAtomic(1);
+        end
+
+        function set.executeAll(obj, tf)
+            obj.executeAll = obj.checkDatatype('executeAll', tf, 'logical');
+            obj.executeAll = obj.executeAll(1);
+        end
+
+    end
+
+    % Public functionality
+    methods
+        
         % Execute task
         function OK = execute(obj)
 
@@ -126,26 +133,9 @@ classdef TaskGroup < handle
             end
 
         end
-
-        %% Setters/getters
-
-        function set.hasTopTask(obj, tf)
-            obj.hasTopTask = obj.checkDatatype('hasTopTask', tf, 'logical');
-            obj.hasTopTask = obj.hasTopTask(1);
-        end
-
-        function set.isAtomic(obj, tf)
-            obj.isAtomic = obj.checkDatatype('isAtomic', tf, 'logical');
-            obj.isAtomic = obj.isAtomic(1);
-        end
-
-        function set.executeAll(obj, tf)
-            obj.executeAll = obj.checkDatatype('executeAll', tf, 'logical');
-            obj.executeAll = obj.executeAll(1);
-        end
-
+        
     end
-
+    
     methods (Hidden, Access = private)
 
         % Demote task messages by one level, recursively
@@ -163,7 +153,7 @@ classdef TaskGroup < handle
 
     end
 
-
+    % Methods for internal use
     methods (Hidden, Static, Access = private)
 
         % helper for setters: check datatype of input
