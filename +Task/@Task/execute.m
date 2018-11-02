@@ -33,26 +33,12 @@ function varargout = execute(obj)
 
     % Task failed
     catch ME 
-
-        obj.terminateTask(Task.ExitStatus.ERROR);
-        
+        obj.terminateTask(Task.ExitStatus.ERROR);        
         if obj.isAtomic
-
-            taskstack_inds = strfind({ME.stack.file}',...
-                                     fileparts(mfilename('fullpath')) );
-
-            non_taskstack_inds = cellfun('isempty', taskstack_inds); %#ok<*STRCL1> (broader version compatibility this way)
-            non_taskstack_inds(end) = false;
-
-            err = struct('message'   , ME.message,...
-                         'identifier', ME.identifier,...
-                         'stack'     , ME.stack(non_taskstack_inds));
-
-            rethrow(err);
-
+            Task.ThrowWithoutTaskStack(ME);
         else
             disp(ME.getReport())        
         end
-
     end
+    
 end

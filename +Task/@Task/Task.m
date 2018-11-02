@@ -204,13 +204,33 @@ classdef Task < matlab.mixin.Copyable
             end
 
         end
-
+        
     end
 
     methods (Hidden, Static, Access = private)
+        
+        % Unique+valid error/warning message ID
         function ID = msgId()
-            ID = regexprep(mfilename('class'), '\.', ':');
+            ID = strrep(mfilename('class'),'.',':');
         end
+        
+        % Something akin to throwAsCaller(): remove all traces of Task from
+        % the error stack, then throw it
+        function ThrowWithoutTaskStack(ME)
+            
+            old_stack = ME.stack;
+            pth       = cd(cd(fullfile(fileparts(mfilename('fullpath')), '..')));
+            
+            keepers   = ~strncmp({old_stack.file}, pth,numel(pth));
+            new_stack = old_stack(keepers);
+            
+            new_ME = struct('identifier', ME.identifier,...
+                            'message'   , ME.message,...
+                            'stack'     , new_stack);
+            rethrow(new_ME);
+            
+        end
+        
     end
 
 end
