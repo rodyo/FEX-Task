@@ -18,13 +18,14 @@ function terminateTask(obj, code, ME)
     OC = onCleanup(obj.cleaner);
 
     % Handle text display
-    if obj.display
+    if ~strcmp(obj.display, 'off')
 
         % Display exit message
         fprintf(obj.completion_msg{[obj.completion_msg{:,1}]==code,2:3});
 
         % show/throw exception
-        if nargin>2 && isa(ME, 'MException')
+        % NOTE: (Rody Oldenhuis) NOT for 'terse' display
+        if strcmp(obj.display, 'on') && nargin>2 && isa(ME, 'MException')
             % NOTE: (Rody Oldenhuis) switch() in MATLAB2010a with
             % enum classes has a bug
             if code==Task.ExitStatus.ERROR
