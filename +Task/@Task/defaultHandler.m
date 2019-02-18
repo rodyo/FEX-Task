@@ -65,10 +65,13 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     % Note that the warning ID may be missing, in which case the line after
     % the warning will be abscent.
     
-    wMsg  = {};
-    wId   = {};
-    stack = {};
-    raw   = {};
+    %#ok<*CHARTEN> (only if you're on > R2017a) 
+    %#ok<*STRCL1>  (only if you're on > R2017a) 
+    
+    wMsg = {};   stack = {};
+    wId  = {};   raw   = {};
+    
+    escape_terminator = [']' char(8)];
 
     % No text -> no warnings
     if isempty(text)
@@ -83,12 +86,10 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     if isempty(hits)
         return; end
 
-    % Some warnings are found 
-    stack_out = cell(size(hits));
-    wMsg_out  = cell(size(hits));
-    wId_out   = cell(size(hits));
-    raw_out   = cell(size(hits));
-
+    % Some warnings are found     
+    wMsg_out = cell(size(hits));    stack_out = cell(size(hits));
+    wId_out  = cell(size(hits));    raw_out   = cell(size(hits));
+    
     hits = [hits; numel(text)];
     for ii = 1:numel(hits)-1
 
@@ -99,7 +100,7 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
         % contain our stack information.
         warn_txt = text(hit:nexthit);
         stack    = strfind(warn_txt,...
-                           'In <a href="matlab: opentoline(');
+                           'In <a href="matlab');
 
         % Find the precise extent
         stack_extent = ~cellfun('isempty', stack);
@@ -112,7 +113,8 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
         stack = warn_txt(stack_extent);
         
         % The entire, raw warning message:
-        raw_out{ii} = [warn_txt(1:stack_end); ' '];
+        raw_out{ii} = [warn_txt(1:stack_end); 
+                       escape_terminator];
 
         % Find warning message, ID
         warnMsg = warn_txt(1:stack_extent(1)-1);
@@ -156,10 +158,8 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     end
 
     % Rename for output
-    wMsg  = wMsg_out;
-    wId   = wId_out;
-    stack = stack_out; 
-    raw   = raw_out;
+    wMsg = wMsg_out;    stack = stack_out; 
+    wId  = wId_out;     raw   = raw_out;
     
 end
 
@@ -252,6 +252,11 @@ end
 % Variant default handler: collect all warnings, and report all of them. 
 function varargout = collect_all_warnings(obj)
  
+    % Apparently, the MATLAB command prompt uses escape sequences similar 
+    % to ANSII sequences in bash:
+    escape_start = ['[' char(8)];
+    escape_end   = [char(10) ']' char(8)];
+    
     try        
         % Run task, suppressing any text output
         [text, varargout{1:nargout}] = do_task(obj);
@@ -263,19 +268,28 @@ function varargout = collect_all_warnings(obj)
         if ~isempty(text)
             
             % Parse the text
-            [wMsg, ~,~, raw] = process_warnings_in_text(text);
+            [wMsg, ~, ~, raw] = process_warnings_in_text(text);
             
             % Some warnings were indeed present
             if ~isempty(wMsg)
                 
                 % Terminate task with WARNING status
                 obj.terminateTask(Task.ExitStatus.WARNING);
-                
-                % Display all collected warnings and return 
+                                
+                % Display all collected warnings and return. Avoid actually
+                % calling warning() - that would mess up lastwarn() and
+                % put Tasking/Task on the stack
                 switch obj.display
-                    case {'on' 'terse'}
-                        disp(char(strcat({'Warning: '}, wMsg)));                
-                    case 'verbose'
+                    case 'terse'
+                        % Display warnings without any stack
+                        wMsg = strcat(escape_start, wMsg, escape_end);
+                        cellfun(@disp, wMsg);
+                        
+                    otherwise
+                        % Display FULL warning
+                        % NOTE: (Rody Oldenhuis) this RAW string contains
+                        % all the correct escape characters, meaning, it
+                        % will actually show up as proper warnings
                         cellfun(@(x) disp(char(x)), raw);
                 end
                 
