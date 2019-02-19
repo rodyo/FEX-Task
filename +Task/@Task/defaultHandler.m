@@ -128,8 +128,11 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
             newWid = newWid.wID;
             warnMsg(end) = [];        
         end
+        
+        warnMsg = regexprep(warnMsg, '^[\[{]\bWarning: ', '');
+        warnMsg = [sprintf('%s\n', warnMsg{1:end-1}), warnMsg{end}];
 
-        wMsg_out{ii} = char(regexprep(warnMsg, '^[\[{]\bWarning: ', ''));    
+        wMsg_out{ii} = warnMsg;    
         wId_out{ii}  = newWid;
 
         % Exclude all Task-related files from the stack and raw string
@@ -282,7 +285,7 @@ function varargout = collect_all_warnings(obj)
                 switch obj.display
                     case 'terse'
                         % Display warnings without any stack
-                        wMsg = strcat(escape_start, wMsg, escape_end);
+                        wMsg = strcat({escape_start}, wMsg, {escape_end});
                         cellfun(@disp, wMsg);
                         
                     otherwise
