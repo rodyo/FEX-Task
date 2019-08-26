@@ -4,11 +4,11 @@ function logicalColloquialProgrammerspeak(terminateTask, varargin)
     
     switch task_exit_status
         case true
-            terminateTask(Task.ExitStatus.DUH);
+            terminateTask(Tasking.ExitStatus.DUH);
         case false
-            terminateTask(Task.ExitStatus.NOPE);
+            terminateTask(Tasking.ExitStatus.NOPE);
         otherwise % (should be unreachable, unless cosmic rays attack)
-            terminateTask(Task.ExitStatus.ERROR, MException(...
+            terminateTask(Tasking.ExitStatus.ERROR, MException(...
                 [mfilename ':attack_of_the_cosmic_rays'],...
                 'zOMG YOU WERE STRUCK BY A COSMIC RAY!!'));
     end

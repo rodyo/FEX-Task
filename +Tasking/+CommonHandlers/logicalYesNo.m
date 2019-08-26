@@ -1,14 +1,14 @@
-function logicalOkSkip(terminateTask, varargin)
+function logicalYesNo(terminateTask, varargin)
     
     task_exit_status = varargin{1};
     
     switch task_exit_status
         case true
-            terminateTask(Task.ExitStatus.COMPLETED);
+            terminateTask(Tasking.ExitStatus.YES);
         case false
-            terminateTask(Task.ExitStatus.NOOP);
+            terminateTask(Tasking.ExitStatus.NO);
         otherwise % (should be unreachable, unless cosmic rays attack)
-            terminateTask(Task.ExitStatus.ERROR, MException(...
+            terminateTask(Tasking.ExitStatus.ERROR, MException(...
                 [mfilename ':unknown_exit_status'],...
                 'Unsupported task exit status: ''%d''.',...
                 task_exit_status));

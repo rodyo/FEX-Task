@@ -5,11 +5,11 @@ function terminateTask(obj, code, ME)
         return; end
 
     if nargin == 1
-        code = Task.ExitStatus.COMPLETED; end
+        code = Tasking.ExitStatus.COMPLETED; end
 
-    assert(isa(code, 'Task.ExitStatus'), ...
+    assert(isa(code, 'Tasking.ExitStatus'), ...
            [obj.msgId() ':bad_exitstatus'],...
-           'First argument must be an ''Task.ExitStatus'' (enumeration).');
+           'First argument must be an ''Tasking.ExitStatus'' (enumeration).');
 
     % Toggle flag (NOTE: has to be BEFORE throws/warnings)
     obj.can_terminate = false;
@@ -28,9 +28,9 @@ function terminateTask(obj, code, ME)
         if strcmp(obj.display, 'on') && nargin>2 && isa(ME, 'MException')
             % NOTE: (Rody Oldenhuis) switch() in MATLAB2010a with
             % enum classes has a bug
-            if code==Task.ExitStatus.ERROR
+            if code==Tasking.ExitStatus.ERROR
                 throwAsCaller(ME);
-            elseif code==Task.ExitStatus.WARNING
+            elseif code==Tasking.ExitStatus.WARNING
                 warning off backtrace
                 warning(ME.identifier, ME.message);
                 warning on backtrace

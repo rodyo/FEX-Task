@@ -14,7 +14,7 @@ classdef Task < matlab.mixin.Copyable
 % PLATFORM    : at least Windows, MacOS, Linux
 % MIN. MATLAB : at least R2011b and up
 % CODEGEN     : no
-% DEPENDENCIES: Task.ExitStatus
+% DEPENDENCIES: Tasking.ExitStatus
 
 
 % If you find this work useful, please consider a donation:
@@ -36,32 +36,33 @@ classdef Task < matlab.mixin.Copyable
 
     properties (Hidden, Access = private)
         can_terminate   = false;
-        handler_variant = 'ignore_warnings'
+        %handler_variant = 'ignore_warnings'
+        handler_variant = 'collect_warnings'
     end
 
     properties (Hidden, GetAccess = private, Constant)
 
         spacer = char(183);
 
-        completion_msg = ...%status      outstream    message
+        completion_msg = ...%status         outstream    message
         {
-            Task.ExitStatus.ERROR        2            'ERR:\n'
-            Task.ExitStatus.WARNING      2            'WARN:\n'
-            Task.ExitStatus.INCOMPLETE   2            'NOK\n'
-            Task.ExitStatus.COMPLETED    1            'OK\n'
-            Task.ExitStatus.NOOP         1            'SKIP\n'
+            Tasking.ExitStatus.ERROR        2            'ERR:\n'
+            Tasking.ExitStatus.WARNING      2            'WARN:\n'
+            Tasking.ExitStatus.INCOMPLETE   2            'NOK\n'
+            Tasking.ExitStatus.COMPLETED    1            'OK\n'
+            Tasking.ExitStatus.NOOP         1            'SKIP\n'
             %{
             %}
-            Task.ExitStatus.YES          1            'YES\n'
-            Task.ExitStatus.NO           1            'NO\n'
+            Tasking.ExitStatus.YES          1            'YES\n'
+            Tasking.ExitStatus.NO           1            'NO\n'
             %{
             %}
-            Task.ExitStatus.DUH          1            'DUH\n'
-            Task.ExitStatus.NOPE         1            'NUH UH\n'
+            Tasking.ExitStatus.DUH          1            'DUH\n'
+            Tasking.ExitStatus.NOPE         1            'NUH UH\n'
             %{
             %}
-            Task.ExitStatus.PASS         1            'PASS\n'
-            Task.ExitStatus.FAIL         2            'FAIL\n'
+            Tasking.ExitStatus.PASS         1            'PASS\n'
+            Tasking.ExitStatus.FAIL         2            'FAIL\n'
         };
 
     end
@@ -82,16 +83,24 @@ classdef Task < matlab.mixin.Copyable
         % Destructor
         function delete(obj)
             if obj.can_terminate
-                obj.terminateTask(Task.ExitStatus.INCOMPLETE); end
+                obj.terminateTask(Tasking.ExitStatus.INCOMPLETE); end
         end
 
-        % Setters/getters ------------------------------------------------------
+        % Setters/getters -------------------------------------------------
 
         function set.message(obj, message)
             obj.message = obj.checkDatatype('message', message, 'char');
         end
 
         function set.display(obj, display)
+            
+            if isscalar(display) && islogical(display)                
+                if display
+                    display = 'on';
+                else
+                    display = 'off';
+                end
+            end
 
             new_display = lower( obj.checkDatatype('display', display, 'char') );
 
@@ -204,11 +213,11 @@ classdef Task < matlab.mixin.Copyable
             end
 
         end
-        
+
     end
 
     methods (Hidden, Static, Access = private)
-        
+                
         % Unique+valid error/warning message ID
         function ID = msgId()
             ID = strrep(mfilename('class'),'.',':');
@@ -225,8 +234,11 @@ classdef Task < matlab.mixin.Copyable
             new_stack = old_stack(keepers);
             
             new_ME = struct('identifier', ME.identifier,...
-                            'message'   , ME.message,...
-                            'stack'     , new_stack);
+                            'stack'     , new_stack,...
+                            'message'   , getReport(ME,...
+                                                    'extended', ...
+                                                    'hyperlinks', 'default') ...
+                            );
             rethrow(new_ME);
             
         end

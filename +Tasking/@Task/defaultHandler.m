@@ -72,13 +72,13 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     wId  = {};   raw   = {};
     
     escape_terminator = [']' char(8)];
-
+    
     % No text -> no warnings
     if isempty(text)
         return; end
 
     % First, find the start of all warnings
-    text = regexp(text, char(10), 'split')';
+    text = regexp(text, char(10), 'split')'; 
     hits = regexp(text, '^[\[{]\bWarning: ' );
     hits = find(~cellfun('isempty', hits));
 
@@ -86,10 +86,10 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     if isempty(hits)
         return; end
 
-    % Some warnings are found     
+    % Some warnings are found 
     wMsg_out = cell(size(hits));    stack_out = cell(size(hits));
     wId_out  = cell(size(hits));    raw_out   = cell(size(hits));
-    
+
     hits = [hits; numel(text)];
     for ii = 1:numel(hits)-1
 
@@ -103,7 +103,7 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
                            'In <a href="matlab');
 
         % Find the precise extent
-        stack_extent = ~cellfun('isempty', stack);
+        stack_extent = ~cellfun('isempty', stack); 
         stack_start  = find(stack_extent, 1, 'first');
         stack_extent(stack_start:-1:1) = true;
         stack_end    = find(stack_extent == false, 1, 'first') - 1;
@@ -136,7 +136,7 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
         wId_out{ii}  = newWid;
 
         % Exclude all Task-related files from the stack and raw string
-        remove_task = @(x) x( cellfun('isempty', strfind(x, fullfile('+Task', '@Task'))) );
+        remove_task = @(x) x( cellfun('isempty', strfind(x, fullfile('+Tasking', '@Task'))) );
         stack       = remove_task(stack);
         raw_out{ii} = remove_task(raw_out{ii});
 
@@ -174,7 +174,7 @@ function varargout = ignore_all_warnings(obj)
         [~, varargout{1:nargout}] = do_task(obj);
 
         % and forego all kinds of warning detection.
-        obj.terminateTask(Task.ExitStatus.COMPLETED);
+        obj.terminateTask(Tasking.ExitStatus.COMPLETED);
 
     catch ME
         rethrow(ME);
@@ -219,7 +219,7 @@ function varargout = treat_warnings_as_errors(obj)
                 % So, unless there's someone with a better idea,
                 % this is what we do here. 
                 
-                obj.terminateTask(Task.ExitStatus.ERROR);
+                obj.terminateTask(Tasking.ExitStatus.ERROR);
                 
                 % Display all collected warnings except the last
                 switch obj.display
@@ -243,7 +243,7 @@ function varargout = treat_warnings_as_errors(obj)
         end
         
         % And terminate task
-        obj.terminateTask(Task.ExitStatus.COMPLETED);
+        obj.terminateTask(Tasking.ExitStatus.COMPLETED);
         
     catch ME     
         rethrow(ME);
@@ -271,14 +271,14 @@ function varargout = collect_all_warnings(obj)
         if ~isempty(text)
             
             % Parse the text
-            [wMsg, ~, ~, raw] = process_warnings_in_text(text);
+            [wMsg, ~,~, raw] = process_warnings_in_text(text);
             
             % Some warnings were indeed present
             if ~isempty(wMsg)
                 
                 % Terminate task with WARNING status
-                obj.terminateTask(Task.ExitStatus.WARNING);
-                                
+                obj.terminateTask(Tasking.ExitStatus.WARNING);
+                
                 % Display all collected warnings and return. Avoid actually
                 % calling warning() - that would mess up lastwarn() and
                 % put Tasking/Task on the stack
@@ -301,8 +301,7 @@ function varargout = collect_all_warnings(obj)
 
         end
         
-        obj.terminateTask(Task.ExitStatus.COMPLETED);
-        
+        obj.terminateTask(Tasking.ExitStatus.COMPLETED);        
         
     catch ME        
         rethrow(ME);

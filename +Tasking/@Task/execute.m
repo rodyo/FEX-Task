@@ -18,7 +18,7 @@ function varargout = execute(obj)
 
                 % Error occurred before task was complete
                 if obj.can_terminate
-                    obj.terminateTask(Task.ExitStatus.COMPLETED);
+                    obj.terminateTask(Tasking.ExitStatus.COMPLETED);
                     warning([obj.msgId() ':handler_failure'], [...
                             'Failure in user-defined task handler. The ',...
                             'error was:\n%s (%s).'], ...
@@ -33,9 +33,9 @@ function varargout = execute(obj)
 
     % Task failed
     catch ME 
-        obj.terminateTask(Task.ExitStatus.ERROR);        
-        if obj.isAtomic
-            Task.ThrowWithoutTaskStack(ME);
+        obj.terminateTask(Tasking.ExitStatus.ERROR);        
+        if obj.isAtomic            
+            Tasking.Task.ThrowWithoutTaskStack(ME);
         else
             disp(ME.getReport())        
         end

@@ -4,11 +4,11 @@ function logicalPassFail(terminateTask, varargin)
     
     switch task_exit_status
         case true
-            terminateTask(Task.ExitStatus.PASS);
+            terminateTask(Tasking.ExitStatus.PASS);
         case false
-            terminateTask(Task.ExitStatus.FAIL);
+            terminateTask(Tasking.ExitStatus.FAIL);
         otherwise % (should be unreachable, unless cosmic rays attack)
-            terminateTask(Task.ExitStatus.ERROR, MException(...
+            terminateTask(Tasking.ExitStatus.ERROR, MException(...
                 [mfilename ':unknown_exit_status'],...
                 'Unsupported task exit status: ''%d''.',...
                 task_exit_status));

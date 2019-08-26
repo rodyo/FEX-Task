@@ -3,11 +3,15 @@ function startTask(obj)
 
     % end unterminated tasks with error when starting a new task
     if obj.can_terminate
-        obj.terminateTask(Task.ExitStatus.INCOMPLETE); end
+        obj.terminateTask(Tasking.ExitStatus.INCOMPLETE); end
 
     % Update # of displayable colums
     cols = get(0, 'CommandWindowSize');
     cols = cols(1);
+    % TODO: (Rody Oldenhuis) is the 'set matrix display width to eighty 
+    % columns ' option is set (in MATLAB preferences/command window
+    % section), 'cols' will always be equal to 80. There is no known
+    % workaround to (temporarily) override this...
 
     % Print message
     if obj.display
@@ -22,4 +26,5 @@ function startTask(obj)
 
     % Toggle flag
     obj.can_terminate = true;
+    
 end
