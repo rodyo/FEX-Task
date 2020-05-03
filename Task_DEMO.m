@@ -1,7 +1,7 @@
 function Task_DEMO()
     
-    import Task.*;
-     clc
+    import Tasking.*;
+    clc
 
     %% Singular tasks
     % ===================================================================
@@ -101,8 +101,8 @@ function Task_DEMO()
     defaultTop = Task('', @() true);    
     defaultTop.handler = @CommonHandlers.logicalYesNo;
     
-    defaultTask = Task.Task('', @() true);    
-    defaultTask.handler = @Task.CommonHandlers.logicalOkSkip;
+    defaultTask = Task('', @() true);    
+    defaultTask.handler = @CommonHandlers.logicalOkSkip;
     
     TTop = copy(defaultTop);
     TTop.message = 'Do grouped tasks?';

@@ -9,7 +9,8 @@ Task progress display will adapt to the width of the command window, and will ad
 
 Tasks can be grouped in sub-tasks, sub-sub-tasks etc. Such task groups can be configured to be atomic (either ALL pass, or the whole group fails), or non-atomic (task execution will continue even if some have failed).
 
-Run Task_DEMO.m for a demonstration.
+Run `Task_DEMO.m` for a brief demonstration.
+
 The documentation is still very sparse; I'm just publishing to get it out there.
 
 If you consider this work useful, please consider [a donation](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4M7RMVNMKAXXQ&source=url).

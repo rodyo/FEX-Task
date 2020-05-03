@@ -11,3 +11,5 @@ codegen/
 *.asv
 *.dat
 
+test/artifacts/*
+!test/artifacts/.gitkeep
