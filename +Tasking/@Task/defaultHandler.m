@@ -10,9 +10,12 @@ function varargout = defaultHandler(obj, variant)
     % Call the appropriate variant
     try
         switch lower(variant)
-            case 'collect_warnings',  [varargout{1:nargout}] = collect_all_warnings(obj);
-            case 'ignore_warnings',   [varargout{1:nargout}] = ignore_all_warnings(obj);
-            case 'treat_as_error',    [varargout{1:nargout}] = treat_warnings_as_errors(obj);
+            case 'collect_warnings'
+                [varargout{1:nargout}] = collect_all_warnings(obj);
+            case 'ignore_warnings'
+                [varargout{1:nargout}] = ignore_all_warnings(obj);
+            case 'treat_as_error'
+                [varargout{1:nargout}] = treat_warnings_as_errors(obj);
             otherwise
         end
 
@@ -25,7 +28,8 @@ end
 % Helper function: carry out the user task. Capture any textual output for
 % further processing later on. Make sure the information emitted by
 % warning() is at its maximum verbosity. 
-function [text, varargout] = do_task(obj) %#ok<INUSD,STOUT> (attack of the evil eval())
+function [text,...
+          varargout] = do_task(obj) %#ok<INUSD,STOUT> (used in eval(c)())
 
     % Make sure stack info and IDs are present in all warnings
     verb_state  = warning('on', 'verbose');
@@ -42,12 +46,12 @@ function [text, varargout] = do_task(obj) %#ok<INUSD,STOUT> (attack of the evil 
 end
 
 
-% Helper function: parse text that would have been written to the command window
-% by the user-task. Detect warning signatures, and render them into data
-% that can be processed easily by MException and/or rethrow()
+% Helper function: parse text that would have been written to the command 
+% window by the user-task. Detect warning signatures, and render them into 
+% data that can be processed easily by MException and/or rethrow()
 function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     
-    % Text containint warnings with verbose and backtrace switched on has
+    % Text containing warnings with verbose and backtrace switched on has
     % the following signature:
     %
     %     (other, possibly user-generated text)
@@ -65,8 +69,8 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
     % Note that the warning ID may be missing, in which case the line after
     % the warning will be abscent.
     
-    %#ok<*CHARTEN> (only if you're on > R2017a) 
-    %#ok<*STRCL1>  (only if you're on > R2017a) 
+    %#ok<*CHARTEN> (only if you're on >= R2017a) 
+    %#ok<*STRCL1>  (only if you're on >  R2017a) 
     
     wMsg = {};   stack = {};
     wId  = {};   raw   = {};
@@ -118,10 +122,13 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
 
         % Find warning message, ID
         warnMsg = warn_txt(1:stack_extent(1)-1);
-        warnMsg = warnMsg( cellfun('isempty', regexp(warnMsg, '^\s*\]*\b*\s*$')) );
+        warnMsg = warnMsg( cellfun('isempty', ...
+                                   regexp(warnMsg,...
+                                          '^\s*\]*\b*\s*$')) );
         newWid  = regexp(warnMsg{end}, [...
-                         '\(Type ".*warning off (?<wID>[^<"]+)".*to suppress this ',...
-                         'warning.\)'], 'names');
+                         '\(Type ".*warning off (?<wID>[^<"]+)".*to ',...
+                         'suppress this warning.\)'],...
+                         'names');
         if isempty(newWid)
             newWid = ''; 
         else
@@ -136,12 +143,15 @@ function [wMsg, wId, stack, raw] = process_warnings_in_text(text)
         wId_out{ii}  = newWid;
 
         % Exclude all Task-related files from the stack and raw string
-        remove_task = @(x) x( cellfun('isempty', strfind(x, fullfile('+Tasking', '@Task'))) );
+        remove_task = @(x) x( cellfun('isempty',...
+                                      strfind(x,...
+                                              fullfile('+Tasking',...
+                                                       '@Task'))) );
         stack       = remove_task(stack);
         raw_out{ii} = remove_task(raw_out{ii});
 
-        % Split the HTML links up in filename, line number and function name 
-        % to form a structure like the one returned by dbstack()
+        % Split the HTML links up in filename, line number and function 
+        % name to form a structure like the one returned by dbstack()
         stack = regexp(stack, [...
                        '^[^'']+''',...
                        '(?<file>[^'']+)',...  % FILE

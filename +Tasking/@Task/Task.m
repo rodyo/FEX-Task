@@ -16,12 +16,7 @@ classdef Task < matlab.mixin.Copyable
 % CODEGEN     : no
 % DEPENDENCIES: Tasking.ExitStatus
 
-
-% If you find this work useful, please consider a donation:
-% https://www.paypal.me/RodyO/3.5
-
-
-    %% Properties
+    % Properties ----------------------------------------------------------
 
     properties
         message    = 'Task'
@@ -40,9 +35,11 @@ classdef Task < matlab.mixin.Copyable
         handler_variant = 'collect_warnings'
     end
 
-    properties (Hidden, GetAccess = private, Constant)
+    properties (Hidden, ...
+                GetAccess = private, ...
+                Constant)
 
-        spacer = char(183);
+        spacer = char( 183*ispc() + 45*isunix() );
 
         completion_msg = ...%status         outstream    message
         {
@@ -67,7 +64,7 @@ classdef Task < matlab.mixin.Copyable
 
     end
 
-    %% Methods
+    % Methods -------------------------------------------------------------
     
     % Class basics
     methods
@@ -86,7 +83,7 @@ classdef Task < matlab.mixin.Copyable
                 obj.terminateTask(Tasking.ExitStatus.INCOMPLETE); end
         end
 
-        % Setters/getters -------------------------------------------------
+        % Setters/getters - - - - - - - - - - - - - - - - - - - - - - - - - 
 
         function set.message(obj, message)
             obj.message = obj.checkDatatype('message', message, 'char');
@@ -109,22 +106,26 @@ classdef Task < matlab.mixin.Copyable
                     obj.display = new_display;
                 otherwise
                     error([obj.msgId() ':invalid_display_string'], [...
-                          'Unsupported display string: ''%s''. Supported strings ',...
-                          'are ''off'', ''terse'', or ''verbose''.']);
+                          'Unsupported display string: ''%s''. ',...
+                          'Supported strings are ''off'', ''terse'', or ',...
+                          '''verbose''.']);
             end
         end
 
         function set.isAtomic(obj, isAtomic)
-            obj.isAtomic = obj.checkDatatype('isAtomic', isAtomic, 'logical');
+            obj.isAtomic = obj.checkDatatype('isAtomic', isAtomic,...
+                                             'logical');
             obj.isAtomic = obj.isAtomic(1);
         end
 
         function set.callback(obj, callback)
-            obj.callback = obj.checkDatatype('callback', callback, 'function_handle');
+            obj.callback = obj.checkDatatype('callback', callback,...
+                                             'function_handle');
         end
 
         function set.parameters(obj, parameters)
-            obj.parameters = obj.checkDatatype('parameters', parameters, 'cell');
+            obj.parameters = obj.checkDatatype('parameters', parameters,...
+                                               'cell');
         end
 
         function set.handler(obj, handler)
@@ -133,7 +134,8 @@ classdef Task < matlab.mixin.Copyable
             if isa(handler, 'double') && isempty(handler)
                 handler = ''; end
 
-            new_fcn = obj.checkDatatype('handler', handler, {'function_handle', 'char'});
+            new_fcn = obj.checkDatatype('handler', handler,...
+                                        {'function_handle', 'char'});
 
             if ischar(new_fcn)
 
@@ -144,14 +146,17 @@ classdef Task < matlab.mixin.Copyable
                 % Select variant of default handler
                 switch lower(new_fcn)
 
-                    case {'ignore_warnings' 'collect_warnings' 'treat_as_error'}
+                    case {'ignore_warnings'
+                          'collect_warnings'
+                          'treat_as_error'}
                         obj.handler = @()[];
                         obj.handler_variant = new_fcn; %#ok<MCSUP>
 
                     otherwise
                         error([obj.msgId() ':invalid_default_handler'], [...
-                              'Default handlers must be specified by ''ignore_warnings'', ',...
-                              '''collect_warnings'' or ''treat_as_error''.']);
+                              'Default handlers must be specified by ',...
+                              '''ignore_warnings'', ''collect_warnings'' ',...
+                              'or ''treat_as_error''.']);
                 end
 
             else
@@ -161,7 +166,8 @@ classdef Task < matlab.mixin.Copyable
         end
 
         function set.cleaner(obj, cleaner)
-            obj.cleaner = obj.checkDatatype('cleaner', cleaner, 'function_handle');
+            obj.cleaner = obj.checkDatatype('cleaner', cleaner,...
+                                            'function_handle');
         end
 
     end
@@ -175,7 +181,8 @@ classdef Task < matlab.mixin.Copyable
     % Methods for internal use
     methods (Hidden, Access = private)
 
-        % Start tasks: print message and the appropriate amount of spacing characters
+        % Start tasks: print message and the appropriate number of 
+        % spacing characters
         startTask(obj);
 
         % Default handler
@@ -189,8 +196,11 @@ classdef Task < matlab.mixin.Copyable
     methods (Hidden, Access = private)
 
         % helper for setters: check datatype of input
-        function data = checkDatatype(obj, propertyname, data, expectedtype)
-
+        function data = checkDatatype(obj,...
+                                      propertyname,...
+                                      data, ...
+                                      expectedtype)
+  
             if ischar(expectedtype)
                 expectedtype = {expectedtype}; end
 
@@ -199,7 +209,8 @@ classdef Task < matlab.mixin.Copyable
                 if numel(expectedtype) == 2
                     fmt = '''%s'' or ''%s''.';
                 else
-                    fmt = [repmat('''%s'', ', 1, numel(expectedtype)-1) 'or ''%s''.'];
+                    fmt = [repmat('''%s'', ', 1, numel(expectedtype)-1),...
+                           'or ''%s''.'];
                 end
             end
 
@@ -228,7 +239,8 @@ classdef Task < matlab.mixin.Copyable
         function ThrowWithoutTaskStack(ME)
             
             old_stack = ME.stack;
-            pth       = cd(cd(fullfile(fileparts(mfilename('fullpath')), '..')));
+            pth       = fullfile(fileparts(mfilename('fullpath')), '..');
+            pth       = cd(cd(pth));
             
             keepers   = ~strncmp({old_stack.file}, pth,numel(pth));
             new_stack = old_stack(keepers);
